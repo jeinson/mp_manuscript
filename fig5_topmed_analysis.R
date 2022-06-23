@@ -60,6 +60,20 @@ haps_per_gene <- table(topmed_hap$gene)
 usable_genes <- true_names(!flag_outliers(haps_per_gene))
 topmed_hap <- topmed_hap %>% filter(gene %in% usable_genes)
 
+# FINALLY: Report the number of individuals used form each cohort, post-filtering
+post.filter.samples <- unique(topmed_hap$indv)
+n.samples.per.cohort.post.filter <- SRA_list %>% 
+  filter(sample.id %in% post.filter.samples) %>%
+  group_by(topmed_phs) %>% 
+  summarise(n_samples = n()) %>% 
+  arrange(desc(n_samples))
+
+#### Post Filter Checkpoint ####
+# Look at the total number of individuals used post-filtering. 
+# N individuals
+length(post.filter.samples)
+length(unique(topmed_hap$csnp))
+
 #### Make the 5 summary plots for the supplemenmt ####
 ## High inclusion allele frequency 
 hi_af <- 
@@ -202,7 +216,7 @@ r0_het_comp <- run_comparison_test(topmed_hap %>% filter(!hom))
 r0_hom <- run_enrichment(topmed_hap %>% filter(hom))
 r0_hom_comp <- run_comparison_test(topmed_hap %>% filter(hom))
 
-save_plot("fig5S4_haps_by_hom_or_het.svg", width = 5, height = 3)
+save_plot("figS6C_haps_by_hom_or_het.svg", width = 5, height = 3)
 plot_grid(
   plot_epsilon_plot(x = r0_het, comp_pval = r0_het_comp["bootstrap_p"]) + ggtitle("Heterozygotes"),
   plot_epsilon_plot(x = r0_hom, comp_pval = r0_hom_comp["bootstrap_p"]) + ggtitle("Homozygotes"), 
@@ -228,7 +242,7 @@ r0_lower_comp <- run_comparison_test(topmed_hap %>% filter(der_allele_hl == "low
 r0_higher <- run_enrichment(topmed_hap %>% filter(der_allele_hl == "higher"))
 r0_higher_comp <- run_comparison_test(topmed_hap %>% filter(der_allele_hl == "higher"))['bootstrap_p']
 
-save_plot("fig5S5_derived_allele_direction.svg", width = 5, height = 3)
+save_plot("figS6B_derived_allele_direction.svg", width = 5, height = 3)
 plot_grid(
   plot_epsilon_plot(x = r0_lower, comp_pval = r0_lower_comp) + ggtitle("sQTL derived allele decreases exon inclusion"),
   plot_epsilon_plot(x = r0_higher, comp_pval = r0_higher_comp) + ggtitle("sQTL derived allele increases exon inclusion"), 
@@ -245,7 +259,7 @@ r0_mostly_included_comparison <-
   run_comparison_test(topmed_hap %>% filter(mean_01_psi > .6))['bootstrap_p']
 
 #### overall inclusion figure ####
-save_plot("fig5S6_overall_inclusion.svg", width = 5, height = 3)
+save_plot("figS6A_overall_inclusion.svg", width = 5, height = 3)
 plot_grid(
   plot_epsilon_plot(r0_mostly_spliced, comp_pval = r0_mostly_spliced_comparison) + 
     ggtitle("sQTLs affecting overall lowly included exons"),
@@ -255,19 +269,6 @@ plot_grid(
 )
 dev.off()
 #####
-
-# As a side note: 
-save_plot("fig5S7_snp_cadd_density.svg", width = 5, height = 4)
-topmed_hap %>% 
-  select(csnp, mean_01_psi, CADD) %>% 
-  distinct %>% 
-  ggplot(aes(mean_01_psi, CADD)) + 
-  #geom_point() +
-  geom_density_2d(col = "black") +
-  geom_density_2d_filled(alpha = .5) + 
-  geom_smooth() + 
-  gtex_v8_figure_theme()
-dev.off()
 
 ### MP as a function of sQTL effect size ----
 dpsi_quant <- 
@@ -286,7 +287,7 @@ r0_q3_dpsi_comp <- run_comparison_test(topmed_hap %>% filter(between(delta_psi, 
 r0_q4_dpsi_comp <- run_comparison_test(topmed_hap %>% filter(delta_psi > c3))['bootstrap_p']
 
 #### Delta PSI figure ####
-save_plot("fig5S8_delta_psi_bins.svg", width = 6, height = 6)
+save_plot("figS6C_delta_psi_bins.svg", width = 6, height = 6)
 plot_grid(
   plot_epsilon_plot(r0_q1_dpsi, r0_q1_dpsi_comp) + ggtitle(paste("ΔPSI <", c1)), 
   plot_epsilon_plot(r0_q2_dpsi, r0_q2_dpsi_comp) + ggtitle(paste(c1, "< ΔPSI <", c2)),
@@ -297,6 +298,22 @@ plot_grid(
 dev.off()
 #####
 
+#### TOPMed Supplemental Figures ####
+# Plot some info about the data. 
+
+# As a side note: 
+save_plot("figS5A_snp_cadd_density.svg", width = 4, height = 3)
+topmed_hap %>% 
+  select(csnp, mean_01_psi, CADD) %>% 
+  distinct %>% 
+  ggplot(aes(mean_01_psi, CADD)) + 
+  #geom_point() +
+  geom_density_2d(col = "black") +
+  geom_density_2d_filled(alpha = .5) + 
+  geom_smooth() + 
+  gtex_v8_figure_theme()
+dev.off()
+
 # Plot the haplotypes in each group
 get_quantile <- function(x){
   ifelse(x < c1, "Q1", 
@@ -304,7 +321,7 @@ get_quantile <- function(x){
                 ifelse(between(x, c2, c3), "Q3", "Q4")))
 }
 
-save_plot("fig5S9_vars_per_dpsi_quartile.svg", height = 4, width = 4)
+save_plot("figS5B_vars_per_dpsi_quartile.svg", height = 3, width = 4)
 topmed_hap %>%
   select(gene, delta_psi, csnp, CADD) %>%
   mutate(dpsi_quantile = get_quantile(delta_psi)) %>%
@@ -314,7 +331,6 @@ topmed_hap %>%
   ggplot(aes(dpsi_quantile, n, fill = deleterious)) + 
   geom_bar(stat = "identity",position = "dodge") + 
   scale_fill_brewer("CADD Designation", palette = "Set1") +
-  ggtitle("Number of haplotypes per delta PSI quantile") +
   xlab("ΔPSI Quartile") +
   gtex_v8_figure_theme()
 dev.off()
@@ -328,15 +344,14 @@ topmed_hap_genes <-
   select(gene, delta_psi, oe_lof) %>%
   distinct
 
-### Supplemental figure 1 ####
 library(ggpubr)
-save_plot("fig5S10_dPSI_by_LOEUF_scatter.png", save_fn = png, width = 4, height = 4, units = "in", res = 400)
+save_plot("figS5C_dPSI_by_LOEUF_scatter.png", save_fn = png, width = 3, height = 3, units = "in", res = 400)
 ggplot(topmed_hap_genes, aes(delta_psi, oe_lof)) + 
   geom_point() + 
   geom_smooth() + 
   gtex_v8_figure_theme() +
   ylab("LOEUF Score") + 
   xlab("ΔPSI") +
-  stat_cor(method = "spearman", label.x = .4, cor.coef.name = "rho")
+  stat_cor(method = "spearman", label.x = .3, cor.coef.name = "rho")
 dev.off()
 
