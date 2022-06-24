@@ -10,12 +10,26 @@
 rm(list = ls())
 setwd("/gpfs/commons/groups/lappalainen_lab/jeinson/projects/modified_penetrance/")
 source("~/myPackages.R")
+library(here)
 source("mp_manuscript/tompen_utility_functions_manuscript.R")
 library(tompen)
 library(ggplot2)
 
 # Read in the filtered haplotype file
 topmed_hap <- read_rds("topmed/topmed_haplotypes_v8_anno_full_with_details.rds")
+
+# 6/23/22 Update!!
+# Limit to individuals in the 19 usable cohorts
+used_indvs <- unique(topmed_hap$indv)
+SRA_list <- read_tsv("topmed/cohort_info/selected_freeze8_sample_annot_2019-10-08.txt")
+used_cohorts <- read_lines("topmed/cohort_info/19_topmed_cohorts_in_Einson_2022.txt")
+
+topmed_hap %<>%
+  left_join(
+    SRA_list %>% select(sample.id, topmed_phs), 
+    by = c("indv" = "sample.id")
+  ) %>% 
+  filter(topmed_phs %in% used_cohorts)
 
 topmed_hap %<>%
   filter(csnp_count <= 10 & csnp_count > 1) 
@@ -83,7 +97,7 @@ for(i in 1:tot){
   
   #--- Deleterious First
   ifelse(
-    nrow(del) > 10,
+    nrow(del) > 30,
     
     deleterious_result <- 
       tryCatch(
@@ -97,7 +111,7 @@ for(i in 1:tot){
   
   #--- Non-deleterious second
   ifelse(
-    nrow(ndel) > 10,
+    nrow(ndel) > 30,
     control_result <- 
       tryCatch(
         poisson_binomial_test_new(ndel), 
