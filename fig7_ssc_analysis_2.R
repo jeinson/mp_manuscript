@@ -118,6 +118,7 @@ cv_af <- ggplot(x, aes(csnp_af_gnomad, fill = del)) +
   gtex_v8_figure_theme()
 
 ## Plot everything together
+library(cowplot)
 save_plot("figS3_ssc_parent_haplotype_summaries.svg", width = 10, height = 2)
 plot_grid(hi_af, hap_per_indv, hap_p_gene, cv_af, nrow = 1)
 dev.off()
@@ -131,6 +132,16 @@ tm_to_ssd_snp_convert <- function(x){
   map_chr(x, ~ paste0(.x[1], ":", .x[2]))
 }
 
+SRA_list <- read_tsv(here("topmed/cohort_info/selected_freeze8_sample_annot_2019-10-08.txt"))
+used_cohorts <- read_lines(here("topmed/cohort_info/19_topmed_cohorts_in_Einson_2022.txt"))
+
+topmed_hap %<>%
+  left_join(
+    SRA_list %>% select(sample.id, topmed_phs), 
+    by = c("indv" = "sample.id")
+  ) %>% 
+  filter(topmed_phs %in% used_cohorts)
+
 topmed_hap <- 
   topmed_hap %>%
   filter(csnp_count <= 10 & csnp_count > 1) %>%
@@ -140,89 +151,89 @@ topmed_hap <-
 # Apply the same filters used on the SSC data
 topmed_hap <- filter(topmed_hap, ssc_snp_id %in% rarest_variants & gene %in% usable_ssc_genes)
 
-#### 1) All genes in SSC vs. TOPMed ####
-
-# First test for depletion in SSC Parents
-p1_parent <- run_enrichment(ssc_parents)
-p1_parent_comp <- run_comparison_test(ssc_parents)
-
-# Then do probands, and TOPMEd limited to the same set
-p1_sp <- run_enrichment(ssc_proband)
-p1_sp_comp <- run_comparison_test(ssc_proband)  
-p1_tm <- run_enrichment(topmed_hap)
-p1_tm_comp <- run_comparison_test(topmed_hap)
-
-p1_comp <- 
-  bootstrap_comparison_test(
-    ssc_proband %>% filter(CADD > 15), 
-    topmed_hap %>% filter(CADD > 15)
-  )
-
-# Check in variants between the two
-prop.table(table(unique(topmed_hap$ssc_snp_id) %in% unique(ssc_proband$csnp)))
-
-#### 2) Variants unique to SSC Probands (compared to siblings) ####
-proband_csnps <- unique(ssc_proband$csnp)
-sibling_csnps <- unique(ssc_sibling$csnp)
-
-proband_unique_csnps <- setdiff(proband_csnps, sibling_csnps)
-sibling_unique_csnps <- setdiff(sibling_csnps, proband_csnps)
-shared_csnps <- intersect(proband_csnps, sibling_csnps)
-
-p2_sp <- ssc_proband %>% filter(csnp %in% proband_unique_csnps) %>% run_enrichment()
-p2_sp_comp <- ssc_proband %>% filter(csnp %in% proband_unique_csnps) %>% run_comparison_test()
-p2_tm <- topmed_hap %>% filter(ssc_snp_id %in% proband_unique_csnps) %>% run_enrichment()
-p2_tm_comp <- topmed_hap %>% filter(ssc_snp_id %in% proband_unique_csnps) %>% run_comparison_test()
-
-p2_comp <- bootstrap_comparison_test(
-  ssc_proband %>% filter(csnp %in% proband_unique_csnps & CADD > 15), 
-  topmed_hap %>% filter(ssc_snp_id %in% proband_unique_csnps & CADD > 15)
-)
-
-# Check in variants between the two
-prop.table(table(
-  unique(filter(ssc_proband, csnp %in% proband_unique_csnps)$csnp) %in% 
-    unique(filter(topmed_hap, ssc_snp_id %in% proband_unique_csnps)$ssc_snp_id)))
-
-#### 3) Variants shared between SSC Probands and Unaffected Siblings ####
-p3_sp <- ssc_proband %>% filter(csnp %in% shared_csnps) %>% run_enrichment()
-p3_sp_comp <- ssc_proband %>% filter(csnp %in% shared_csnps) %>% run_comparison_test()
-p3_tm <- topmed_hap %>% filter(ssc_snp_id %in% shared_csnps) %>% run_enrichment()
-p3_tm_comp <- topmed_hap %>% filter(ssc_snp_id %in% shared_csnps) %>% run_comparison_test()
-
-p3_comp <- bootstrap_comparison_test(
-  ssc_proband %>% filter(csnp %in% shared_csnps & CADD > 15),
-  topmed_hap %>% filter(ssc_snp_id %in% shared_csnps & CADD > 15)
-)
-
-# Check in variants between the two
-prop.table(table(
-  unique(filter(ssc_proband, csnp %in% shared_csnps)$csnp) %in% 
-    unique(filter(topmed_hap, ssc_snp_id %in% shared_csnps)$ssc_snp_id)))
+# #### 1) All genes in SSC vs. TOPMed ####
+# 
+# # First test for depletion in SSC Parents
+# p1_parent <- run_enrichment(ssc_parents)
+# p1_parent_comp <- run_comparison_test(ssc_parents)
+# 
+# # Then do probands, and TOPMEd limited to the same set
+# p1_sp <- run_enrichment(ssc_proband)
+# p1_sp_comp <- run_comparison_test(ssc_proband)  
+# p1_tm <- run_enrichment(topmed_hap)
+# p1_tm_comp <- run_comparison_test(topmed_hap)
+# 
+# p1_comp <- 
+#   bootstrap_comparison_test(
+#     ssc_proband %>% filter(CADD > 15), 
+#     topmed_hap %>% filter(CADD > 15)
+#   )
+# 
+# # Check in variants between the two
+# prop.table(table(unique(topmed_hap$ssc_snp_id) %in% unique(ssc_proband$csnp)))
+# 
+# #### 2) Variants unique to SSC Probands (compared to siblings) ####
+# proband_csnps <- unique(ssc_proband$csnp)
+# sibling_csnps <- unique(ssc_sibling$csnp)
+# 
+# proband_unique_csnps <- setdiff(proband_csnps, sibling_csnps)
+# sibling_unique_csnps <- setdiff(sibling_csnps, proband_csnps)
+# shared_csnps <- intersect(proband_csnps, sibling_csnps)
+# 
+# p2_sp <- ssc_proband %>% filter(csnp %in% proband_unique_csnps) %>% run_enrichment()
+# p2_sp_comp <- ssc_proband %>% filter(csnp %in% proband_unique_csnps) %>% run_comparison_test()
+# p2_tm <- topmed_hap %>% filter(ssc_snp_id %in% proband_unique_csnps) %>% run_enrichment()
+# p2_tm_comp <- topmed_hap %>% filter(ssc_snp_id %in% proband_unique_csnps) %>% run_comparison_test()
+# 
+# p2_comp <- bootstrap_comparison_test(
+#   ssc_proband %>% filter(csnp %in% proband_unique_csnps & CADD > 15), 
+#   topmed_hap %>% filter(ssc_snp_id %in% proband_unique_csnps & CADD > 15)
+# )
+# 
+# # Check in variants between the two
+# prop.table(table(
+#   unique(filter(ssc_proband, csnp %in% proband_unique_csnps)$csnp) %in% 
+#     unique(filter(topmed_hap, ssc_snp_id %in% proband_unique_csnps)$ssc_snp_id)))
+# 
+# #### 3) Variants shared between SSC Probands and Unaffected Siblings ####
+# p3_sp <- ssc_proband %>% filter(csnp %in% shared_csnps) %>% run_enrichment()
+# p3_sp_comp <- ssc_proband %>% filter(csnp %in% shared_csnps) %>% run_comparison_test()
+# p3_tm <- topmed_hap %>% filter(ssc_snp_id %in% shared_csnps) %>% run_enrichment()
+# p3_tm_comp <- topmed_hap %>% filter(ssc_snp_id %in% shared_csnps) %>% run_comparison_test()
+# 
+# p3_comp <- bootstrap_comparison_test(
+#   ssc_proband %>% filter(csnp %in% shared_csnps & CADD > 15),
+#   topmed_hap %>% filter(ssc_snp_id %in% shared_csnps & CADD > 15)
+# )
+# 
+# # Check in variants between the two
+# prop.table(table(
+#   unique(filter(ssc_proband, csnp %in% shared_csnps)$csnp) %in% 
+#     unique(filter(topmed_hap, ssc_snp_id %in% shared_csnps)$ssc_snp_id)))
 
 #### 4) Variants in ASD specific genes ----
 sfari_genes <- read_csv("SFARI-Gene_genes_09-02-2021release_10-25-2021export.csv")
 sfari_genes <- sfari_genes %>% filter(!is.na(`ensembl-id`))
-
-p4_sp <- ssc_proband %>% 
-  filter(csnp %in% proband_csnps & gene %in% sfari_genes$`ensembl-id`) %>% 
-  run_enrichment()
-p4_sp_comp <- ssc_proband %>% 
-  filter(csnp %in% proband_csnps & gene %in% sfari_genes$`ensembl-id`) %>% 
-  run_comparison_test()
-p4_tm <- topmed_hap %>%
-  filter(ssc_snp_id %in% shared_csnps & gene %in% sfari_genes$`ensembl-id`) %>%
-  run_enrichment()
-p4_tm_comp <- topmed_hap %>%
-  filter(ssc_snp_id %in% shared_csnps & gene %in% sfari_genes$`ensembl-id`) %>%
-  run_comparison_test()
-
-p4_comp <- bootstrap_comparison_test(
-  ssc_proband %>%
-    filter(csnp %in% proband_csnps & gene %in% sfari_genes$`ensembl-id` & CADD > 15),
-  topmed_hap %>%
-    filter(ssc_snp_id %in% shared_csnps & gene %in% sfari_genes$`ensembl-id` & CADD > 15)
-)
+# 
+# p4_sp <- ssc_proband %>% 
+#   filter(csnp %in% proband_csnps & gene %in% sfari_genes$`ensembl-id`) %>% 
+#   run_enrichment()
+# p4_sp_comp <- ssc_proband %>% 
+#   filter(csnp %in% proband_csnps & gene %in% sfari_genes$`ensembl-id`) %>% 
+#   run_comparison_test()
+# p4_tm <- topmed_hap %>%
+#   filter(ssc_snp_id %in% shared_csnps & gene %in% sfari_genes$`ensembl-id`) %>%
+#   run_enrichment()
+# p4_tm_comp <- topmed_hap %>%
+#   filter(ssc_snp_id %in% shared_csnps & gene %in% sfari_genes$`ensembl-id`) %>%
+#   run_comparison_test()
+# 
+# p4_comp <- bootstrap_comparison_test(
+#   ssc_proband %>%
+#     filter(csnp %in% proband_csnps & gene %in% sfari_genes$`ensembl-id` & CADD > 15),
+#   topmed_hap %>%
+#     filter(ssc_snp_id %in% shared_csnps & gene %in% sfari_genes$`ensembl-id` & CADD > 15)
+# )
 
 ## Check if ASD genes are more constrained. 
 gene_constraints <- read_tsv("/gpfs/commons/groups/lappalainen_lab/jeinson/data/gnomad.v2.1.1.lof_metrics.by_gene.txt")
@@ -230,21 +241,21 @@ gene_map <- read_tsv("/gpfs/commons/groups/lappalainen_lab/jmorris/ensembl/ensem
 gene_constraints %<>%
   rename("name" = "gene") %>%
   left_join(gene_map) %>%
-  select(gene, name, oe_lof)
+  select(gene, name, oe_lof_upper)
 
 sfari_gene_constraint <- left_join(gene_constraints, sfari_genes, 
                                    by = c("gene" = "ensembl-id"))
 sfari_gene_constraint$is_asd_gene <- !is.na(sfari_gene_constraint$`gene-name`)
 
 asd_gene_LOEUF_density <- 
-  ggplot(sfari_gene_constraint, aes(oe_lof, fill = is_asd_gene)) + 
+  ggplot(sfari_gene_constraint, aes(oe_lof_upper, fill = is_asd_gene)) + 
   geom_density(alpha = .5) + 
   xlab("LOEUF") + ylab("density (genes)") +
   xlim(0, 3) + 
   gtex_v8_figure_theme() + 
   theme(legend.position = c(.75,.75))
 
-t.test(oe_lof ~ is_asd_gene, data = sfari_gene_constraint)
+t.test(oe_lof_upper ~ is_asd_gene, data = sfari_gene_constraint)
 
 ### Draw up the plots
 
@@ -258,29 +269,29 @@ plot_epsilon_plot(p1_parent, pval_pos = pval_pos, n_pos = n_pos,comp_pval = p1_p
 dev.off()
 
 # Now do the other set of analyses
-pval_pos = .1
-n_pos = .13
-save_plot("fig7_SSC_haplotype_depletion_cross.svg", width = 5, height = 13.5)
-plot_grid(
-  plot_epsilon_plot(p1_parent, p1_parent_comp['bootstrap_p'], pval_pos, n_pos) + ggtitle("p1_parent"),
-  
-  plot_epsilon_plot(p1_sp, p1_sp_comp['bootstrap_p'], pval_pos, n_pos) + ggtitle("p1_sp"),
-  plot_epsilon_plot(p1_tm, p1_tm_comp['bootstrap_p'], pval_pos, n_pos) + ggtitle("p1_tm"),
-  
-  plot_epsilon_plot(p2_sp, p2_sp_comp['bootstrap_p'], pval_pos, n_pos) + ggtitle("p2_sp"),
-  plot_epsilon_plot(p2_tm, p2_tm_comp['bootstrap_p'], pval_pos, n_pos) + ggtitle("p2_tm"),
-  
-  plot_epsilon_plot(p3_sp, p3_sp_comp['bootstrap_p'], pval_pos, n_pos) + ggtitle("p3_sp"),
-  plot_epsilon_plot(p3_tm, p3_tm_comp['bootstrap_p'], pval_pos, n_pos) + ggtitle("p3_tm"),
-  
-  plot_epsilon_plot(p4_sp, p4_sp_comp['bootstrap_p'], pval_pos, n_pos) + ggtitle("p4_sp"),
-  plot_epsilon_plot(p4_tm, p4_tm_comp['bootstrap_p'], pval_pos, n_pos) + ggtitle("p4_tm"),
-  
-  ncol = 1
-)
-dev.off()
-
-rbind(p1_comp, p2_comp, p3_comp, p4_comp)
+# pval_pos = .1
+# n_pos = .13
+# save_plot("fig7_SSC_haplotype_depletion_cross.svg", width = 5, height = 13.5)
+# plot_grid(
+#   plot_epsilon_plot(p1_parent, p1_parent_comp['bootstrap_p'], pval_pos, n_pos) + ggtitle("p1_parent"),
+#   
+#   plot_epsilon_plot(p1_sp, p1_sp_comp['bootstrap_p'], pval_pos, n_pos) + ggtitle("p1_sp"),
+#   plot_epsilon_plot(p1_tm, p1_tm_comp['bootstrap_p'], pval_pos, n_pos) + ggtitle("p1_tm"),
+#   
+#   plot_epsilon_plot(p2_sp, p2_sp_comp['bootstrap_p'], pval_pos, n_pos) + ggtitle("p2_sp"),
+#   plot_epsilon_plot(p2_tm, p2_tm_comp['bootstrap_p'], pval_pos, n_pos) + ggtitle("p2_tm"),
+#   
+#   plot_epsilon_plot(p3_sp, p3_sp_comp['bootstrap_p'], pval_pos, n_pos) + ggtitle("p3_sp"),
+#   plot_epsilon_plot(p3_tm, p3_tm_comp['bootstrap_p'], pval_pos, n_pos) + ggtitle("p3_tm"),
+#   
+#   plot_epsilon_plot(p4_sp, p4_sp_comp['bootstrap_p'], pval_pos, n_pos) + ggtitle("p4_sp"),
+#   plot_epsilon_plot(p4_tm, p4_tm_comp['bootstrap_p'], pval_pos, n_pos) + ggtitle("p4_tm"),
+#   
+#   ncol = 1
+# )
+# dev.off()
+# 
+# rbind(p1_comp, p2_comp, p3_comp, p4_comp)
 
 save_plot("figS9B_constrained_gene_loeuf.svg", width = 3, height = 2)
 asd_gene_LOEUF_density
@@ -320,11 +331,16 @@ sfari_tm_comp <- topmed_hap %>%
 library(cowplot)
 pval_pos = .12
 n_pos = 0.1
-plot_grid(
-  plot_epsilon_plot(sfari_parent, sfari_parent_comp['bootstrap_p'], n_pos, pval_pos) + ggtitle("Parents"),
-  plot_epsilon_plot(sfari_proband, sfari_proband_comp['bootstrap_p'], n_pos, pval_pos) + ggtitle("Probands"),
-  plot_epsilon_plot(sfari_sibling, sfari_sibling_comp['bootstrap_p'], n_pos, pval_pos) + ggtitle("Siblings"),
-  plot_epsilon_plot(sfari_tm, sfari_tm_comp['bootstrap_p'], n_pos, pval_pos) + ggtitle("TOPMed"),
-  
-  nrow = 4
+fig7_topmed_SSC_comp_ASD_genes <- 
+  plot_grid(
+    plot_epsilon_plot(sfari_parent, sfari_parent_comp['bootstrap_p'], n_pos, pval_pos) + ggtitle("Parents"),
+    plot_epsilon_plot(sfari_proband, sfari_proband_comp['bootstrap_p'], n_pos, pval_pos) + ggtitle("Probands"),
+    plot_epsilon_plot(sfari_sibling, sfari_sibling_comp['bootstrap_p'], n_pos, pval_pos) + ggtitle("Siblings"),
+    plot_epsilon_plot(sfari_tm, sfari_tm_comp['bootstrap_p'], n_pos, pval_pos) + ggtitle("TOPMed"),
+    
+    nrow = 4
 )
+
+save_plot("fig7_SSC_haplotype_depletion_cross.svg", width = 5, height = 6)
+fig7_topmed_SSC_comp_ASD_genes
+dev.off()

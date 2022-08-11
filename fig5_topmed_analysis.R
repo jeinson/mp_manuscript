@@ -50,6 +50,11 @@ topmed_hap <-
   ) %>%
   filter(topmed_phs %in% usable_cohorts)
 
+write_lines(usable_cohorts, "cohort_info/19_topmed_cohorts_in_Einson_2022.txt")
+
+# What percentage of white individuals do we consider?
+sum(n_samples_per_cohort[usable_cohorts]) / sum(n_samples_per_cohort)
+
 # Impose a stricter minor allele frequency filter. I only want variants that
 # appear 10 or fewer times in the whole dataset. 
 topmed_hap <- filter(topmed_hap, csnp_count <= 10 & csnp_count > 1)
@@ -137,8 +142,8 @@ plot_grid(hi_af, hap_per_indv, hap_p_gene, cv_af, nrow = 1)
 dev.off()
 
 # Constraint metrics, in quantiles
-loeuf_quantiles <- select(topmed_hap, gene, oe_lof) %>% distinct %$% 
-  quantile(oe_lof, na.rm = T)
+loeuf_quantiles <- select(topmed_hap, gene, oe_lof_upper) %>% distinct %$% 
+  quantile(oe_lof_upper, na.rm = T)
 
 dpsi_quantiles <- 
   select(topmed_hap, gene, delta_psi) %>%
@@ -177,9 +182,9 @@ poibin::ppoibin(sum(topmed_hap$beta), topmed_hap$exp_beta_empir, method = "RNA")
 
 # Separate the haplotypes based on filters
 f1 <- filter(topmed_hap, delta_psi > dpsi_quantiles[4])
-f2 <- filter(topmed_hap, oe_lof < loeuf_quantiles[2])
+f2 <- filter(topmed_hap, oe_lof_upper < loeuf_quantiles[2])
 f3 <- filter(topmed_hap, delta_psi > dpsi_quantiles[4] &
-               oe_lof < loeuf_quantiles[2])
+               oe_lof_upper < loeuf_quantiles[2])
 
 #### Run analysis and plot ----
 # Actually run the thing! The first filters used
@@ -302,7 +307,7 @@ dev.off()
 # Plot some info about the data. 
 
 # As a side note: 
-save_plot("figS5A_snp_cadd_density.svg", width = 4, height = 3)
+save_plot("figS6A_snp_cadd_density.svg", width = 4, height = 3)
 topmed_hap %>% 
   select(csnp, mean_01_psi, CADD) %>% 
   distinct %>% 
@@ -321,7 +326,7 @@ get_quantile <- function(x){
                 ifelse(between(x, c2, c3), "Q3", "Q4")))
 }
 
-save_plot("figS5B_vars_per_dpsi_quartile.svg", height = 3, width = 4)
+save_plot("figS6B_vars_per_dpsi_quartile.svg", height = 3, width = 4)
 topmed_hap %>%
   select(gene, delta_psi, csnp, CADD) %>%
   mutate(dpsi_quantile = get_quantile(delta_psi)) %>%
@@ -341,12 +346,12 @@ dev.off()
 # variants, and thus have higher LOEUF scores
 topmed_hap_genes <- 
   topmed_hap %>%
-  select(gene, delta_psi, oe_lof) %>%
+  select(gene, delta_psi, oe_lof_upper, oe_lof) %>%
   distinct
 
 library(ggpubr)
-save_plot("figS5C_dPSI_by_LOEUF_scatter.png", save_fn = png, width = 3, height = 3, units = "in", res = 400)
-ggplot(topmed_hap_genes, aes(delta_psi, oe_lof)) + 
+save_plot("fig6C_dPSI_by_LOEUF_scatter.png", save_fn = png, width = 3, height = 3, units = "in", res = 400)
+ggplot(topmed_hap_genes, aes(delta_psi, oe_lof_upper)) + 
   geom_point() + 
   geom_smooth() + 
   gtex_v8_figure_theme() +
