@@ -50,6 +50,9 @@ topmed_all_hap_by_gene <-
 genes_with_enough_haps <- map_dbl(topmed_all_hap_by_gene, nrow) > 10
 genes_with_enough_haps <- true_names(genes_with_enough_haps)
 
+# How many genes are there with more than 30 deleterious haplotypes?
+sum(map_dbl(topmed_all_hap_by_gene, ~sum(.x$CADD > 15)) > 30)
+
 # How many haplotypes do we get per gene after filtering?
 hist(map_dbl(topmed_all_hap_by_gene[genes_with_enough_haps], nrow))
 

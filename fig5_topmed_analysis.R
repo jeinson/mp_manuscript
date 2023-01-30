@@ -16,7 +16,7 @@ topmed_hap <- read_rds("topmed_haplotypes_v8_anno_full_with_details.rds")
 #### Extract used cohorts from filtered set ####
 # 6/15/22 Update: Filter to individuals in highly represented cohorts. 
 # There were a few individuals from cohorts with mostly African Americans. 
-# Getting approval for the whole cohort is a pain in the ass. 
+# We omit these to avoid requesting approval again. 
 used_indvs <- unique(topmed_hap$indv)
 SRA_list <- read_tsv("cohort_info/selected_freeze8_sample_annot_2019-10-08.txt")
 SRA_list_used_samples <- SRA_list %>% 

@@ -74,7 +74,6 @@ dev.off()
 
 # First check depletion across all variants and genes
 poison_binomial_test(ssc_parents)
-poibin::ppoibin()
 
 # Now run the enrichment and plot the plots!
 library(tompen)
