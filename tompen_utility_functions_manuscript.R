@@ -202,8 +202,35 @@ run_nonsynonymous_comparison <- function(tweaked_haplotypes, ...){
 
 save_plot <- function(fn, save_fn = svg, ...){
   full_path <- paste0(
-    "/gpfs/commons/groups/lappalainen_lab/jeinson/projects/modified_penetrance/mp_manuscript/figures/",
+    "figures/",
     fn)
   save_fn(full_path, ...)
   
+}
+
+# Function for making pretty plots
+gtex_v8_figure_theme <- function() {
+  return(theme(plot.title = element_text(face="plain", size = 8),
+               text = element_text(size = 8),
+               axis.text=element_text(size = 7),
+               panel.grid.major = element_blank(),
+               panel.grid.minor = element_blank(),
+               panel.background = element_rect(fill = "transparent"),
+               # legend.box.background = element_rect(fill = "transparent"),
+               axis.line = element_line(colour = "black"),
+               legend.text = element_text(size = 7),
+               legend.title = element_text(size = 8)
+  )
+  )
+}
+
+# Be quiet!
+stfu <- function(x) suppressMessages(suppressWarnings(x))
+
+
+# Flag outlier function
+flag_outliers <- function(x){
+  quants <- quantile(x)[c(2,4)]
+  iqr <- IQR(x)
+  return((x > quants[2] + 1.5 * iqr) | (x < quants[1] - 1.5 * iqr))
 }

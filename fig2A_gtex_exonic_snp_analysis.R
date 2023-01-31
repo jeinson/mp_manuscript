@@ -5,12 +5,14 @@
 # tissue results in the supplement. 
 
 rm(list = ls())
-setwd("/gpfs/commons/groups/lappalainen_lab/jeinson/projects/modified_penetrance")
-source("~/myPackages.R")
-source("mp_manuscript/tompen_utility_functions_manuscript.R")
+
+# Set wd to wherever mp_manuscript is located
+library(tidyverse)
+library(magrittr)
+source("tompen_utility_functions_manuscript.R")
 library(ggplot2)
 
-rv_bytiss <- readRDS("gtex_lof_in_exons/data/rare_variants_exon_psi_zscore_bytissue.rds")
+rv_bytiss <- readRDS("data/fig2_data/rare_variants_exon_psi_zscore_bytissue.rds")
 tissues <- names(rv_bytiss)
 
 rv_bytiss <- 
@@ -32,13 +34,13 @@ rvs <-
 rvs <- rvs %>% filter(gnomad_af < .005)
 
 # Clean up the annotations
-snp_cons_order <- read_tsv("../../data/consdetail_rank_copy.tsv")$consdetail
+snp_cons_order <- read_tsv("data/fig2_data/consdetail_rank_copy.tsv")$consdetail
 rvs$consequence %<>% 
   str_split(",") %>%
   map_chr(~ names(which.min(sapply(.x, match, snp_cons_order))))
 
 # Add pretty annotations
-consequence_pretty_map <- read_tsv("../../data/consdetail_rank_pretty_names.csv") %>%
+consequence_pretty_map <- read_tsv("data/fig2_data/consdetail_rank_pretty_names.csv") %>%
   select(consdetail, pretty_name) %>%
   deframe()
 rvs %<>%
@@ -277,49 +279,40 @@ ggplot(aes(pretty_name, mean, fill = deleterious_status)) +
   theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1)) 
 dev.off()
 
-#### Median PSI Z-Score ####
-# How about the median PSI Z-score?
-df <- 
-  rvs %>%
-  group_by(Tissue, deleterious_status) %>%
-  #filter(consequence != "stop_gained") %>%
-  nest() %>% 
-  mutate(boot_res = map(data,
-                        ~ boot(data = .$exon_psi_Zscore,
-                               statistic = function(x, i) median(x[i]),
-                               R = 1000)),
-         boot_res_ci = map(boot_res, boot.ci, type = "perc"),
-         mean = map(boot_res_ci, ~ .$t0),
-         lower_ci = map(boot_res_ci, ~ .$percent[[4]]),
-         upper_ci = map(boot_res_ci, ~ .$percent[[5]]),
-         n =  map(data, nrow)) %>% 
-  select(-data, -boot_res, -boot_res_ci) %>% 
-  unnest(cols = c(n, mean, lower_ci, upper_ci)) %>% 
-  ungroup()
+message(
+"R version 4.2.1 (2022-06-23)
+Platform: aarch64-apple-darwin20 (64-bit)
+Running under: macOS Ventura 13.0
 
-plt <- 
-  ggplot(df, aes(Tissue, mean, fill = deleterious_status)) +
-  geom_bar(stat = "identity", position = position_dodge(width = .9)) +
-  geom_pointrange(aes(ymin = lower_ci, ymax = upper_ci), 
-                  size = .5,
-                  position = position_dodge(width = .8)) + 
-  geom_text(aes(y = 0.4, label = prettyNum(unlist(n), big.mark = ",")), 
-            angle = 90, hjust = 1,
-            position = position_dodge(width = .9)) + 
-  scale_fill_manual(values = c("red", "blue")) + 
-  geom_hline(yintercept = 0, lty = 2) +
-  ylab("Median PSI Zscore (+/- 95% Bootstrap CI)") + 
-  theme_classic() + 
-  theme(axis.text.x = element_text(angle = 60, vjust = 1, hjust=1)) 
+Matrix products: default
+LAPACK: /Library/Frameworks/R.framework/Versions/4.2-arm64/Resources/lib/libRlapack.dylib
 
-plt
+locale:
+[1] en_US.UTF-8/en_US.UTF-8/en_US.UTF-8/C/en_US.UTF-8/en_US.UTF-8
+
+attached base packages:
+[1] stats     graphics  grDevices utils     datasets  methods   base     
+
+other attached packages:
+ [1] boot_1.3-28     magrittr_2.0.3  forcats_0.5.2   stringr_1.4.1   dplyr_1.0.10   
+ [6] purrr_0.3.5     readr_2.1.3     tidyr_1.2.1     tibble_3.1.8    ggplot2_3.3.6  
+[11] tidyverse_1.3.2
+
+loaded via a namespace (and not attached):
+ [1] tidyselect_1.2.0    lattice_0.20-45     splines_4.2.1       haven_2.5.1        
+ [5] gargle_1.2.1        colorspace_2.0-3    vctrs_0.5.0         generics_0.1.3     
+ [9] mgcv_1.8-41         utf8_1.2.2          rlang_1.0.6         pillar_1.8.1       
+[13] glue_1.6.2          withr_2.5.0         DBI_1.1.3           bit64_4.0.5        
+[17] dbplyr_2.2.1        modelr_0.1.9        readxl_1.4.1        lifecycle_1.0.3    
+[21] munsell_0.5.0       gtable_0.3.1        cellranger_1.1.0    rvest_1.0.3        
+[25] labeling_0.4.2      tzdb_0.3.0          parallel_4.2.1      fansi_1.0.3        
+[29] broom_1.0.1         backports_1.4.1     scales_1.2.1        googlesheets4_1.0.1
+[33] vroom_1.6.0         jsonlite_1.8.3      farver_2.1.1        fs_1.5.2           
+[37] bit_4.0.4           hms_1.1.2           digest_0.6.30       stringi_1.7.8      
+[41] grid_4.2.1          cli_3.4.1           tools_4.2.1         crayon_1.5.2       
+[45] pkgconfig_2.0.3     Matrix_1.5-1        ellipsis_0.3.2      xml2_1.3.3         
+[49] reprex_2.0.2        googledrive_2.0.0   lubridate_1.8.0     assertthat_0.2.1   
+[53] httr_1.4.4          rstudioapi_0.14     R6_2.5.1            nlme_3.1-160       
+[57] compiler_4.2.1")
 
 
-# Plot everything together, for the sake of looking nice. 
-ggplot(rvs, aes(deleterious_status, exon_psi_Zscore)) + 
-  geom_boxplot()
-
-# Phred vs. psi-Zscore
-ggplot(rvs, aes(cadd_phred, exon_psi_Zscore)) + 
-  geom_point() + 
-  geom_smooth()

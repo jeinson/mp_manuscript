@@ -1,5 +1,6 @@
 figures/
 old/
 figures_old.zip
+data/fig[0-9]_data/
 .R*
 .Rproj.user

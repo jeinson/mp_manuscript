@@ -3,13 +3,15 @@
 # 
 # 1/25/22
 
-source("~/myPackages.R")
-setwd("/gpfs/commons/groups/lappalainen_lab/jeinson/projects/modified_penetrance")
-source("mp_manuscript/tompen_utility_functions_manuscript.R")
+library(tidyverse)
+# Set directory to wherever this is saved
+source("tompen_utility_functions_manuscript.R")
 
 # Figure 1B: High inclusion sQTL allele frequcy distribution
 
-sqtls <- read_tsv("sQTL_v8_anno/cross_tissue_top_sQTLs/top_sQTLs_MAF05.tsv")
+# See https://www.biorxiv.org/content/10.1101/2022.12.05.518915v1 for details
+# on this file
+sqtls <- read_tsv("data/fig3_data/top_sQTLs_MAF05.tsv")
 
 library(ggplot2)
 sqtl.af.hist <-

@@ -1,18 +1,15 @@
 # This script is used to perform haplotype enrichment analyses on the GTEx
 # data, using more stringent quality filtering and better plotting techniques. 
 # 
-# I have already done much of this analysis, but I want to re-do it and make
-# it a bit cleaner and easier to follow. 
 
 rm(list = ls())
-source("~/myPackages.R")
-setwd("/gpfs/commons/groups/lappalainen_lab/jeinson/projects/modified_penetrance")
-source("mp_manuscript/tompen_utility_functions_manuscript.R")
-library("tompen")
+source("tompen_utility_functions_manuscript.R")
+library("stampen") # Can be installed from github
 library("ggplot2")
+library("magrittr")
 
-#gtex_haps <- read_haps("haplotype_combos/multiple_exons/", "secondary_exon_hap_combos_3_24_22")
-gtex_haps <- read_haps("gtex_haplotypes_phaser/haplotype_combos", "secondary_exon_hap_combos_phaser_3_24_22")
+# Read in data, using a utility function
+gtex_haps <- read_haps("data/fig3_data/gtex_haplotypes/", "secondary_exon_hap_combos_phaser_3_24_22")
 
 # In its current state, how many times do each rare variant show up?
 barplot(table(table(gtex_haps$csnp)))
@@ -41,14 +38,14 @@ gtex_haps %>%
   table %>% prop.table
 
 # Add a column for the exon ID. 
-exon_id_map <- readRDS("../../data/gtex_stuff/gtex_v8_exon_id_map.rds")
+exon_id_map <- readRDS("data/gtex_v8_exon_id_map.rds")
 gtex_haps$top_exon_coord <- exon_id_map[gtex_haps$top_exon_coord]
 
 # Add this so it doesn't break the downstream pipelines
 gtex_haps$exp_beta <- gtex_haps$exp_beta_empir
 
 # Addition 3/3/22: Limit to individuals with European ancestry
-euro_indvs <- read_tsv("/gpfs/commons/groups/lappalainen_lab/jeinson/data/gtex_stuff/gtex_v8_indvs_races.txt") %>%
+euro_indvs <- read_tsv("data/gtex_v8_indvs_races.txt") %>%
   deframe
 euro_indvs <- names(euro_indvs[euro_indvs == 3])
 gtex_haps <- gtex_haps %>% filter(indv %in% euro_indvs)
@@ -132,14 +129,26 @@ cv_af <- ggplot(x, aes(csnp_af_gnomad, fill = del)) +
   gtex_v8_figure_theme()
 
 ## Plot everything together
+library(cowplot)
 save_plot("figS3_gtex_haplotype_summaries.svg", width = 10, height = 2)
 plot_grid(hi_af, hap_per_indv, hap_p_gene, cv_af, nrow = 1)
 dev.off()
 
 
 # Plot the numbers of haplotypes in a pretty figure
-source("pipeline/scripts/image_xlabel_script.R")
-library(tompen)
+source("scripts/image_xlabel_script.R")
+# Note EBImage must be installed from bioconductor for this to work
+hap_pic_files <- list.files("data/fig3_data/hap_images/", 
+                            full.names = T, pattern = "[01-12].*png")
+
+npoints <- length(hap_pic_files)
+
+### Save the images into a list
+hap_pics <- vector(mode = "list", length = npoints)
+for(i in 1:npoints){
+  hap_pics[[i]] <- EBImage::readImage(hap_pic_files[i])
+}
+
 gtex_haps_plt <- gtex_haps
 gtex_haps_plt$haplotype <- factor(gtex_haps$haplotype, levels = names(beta_config_sqtl))
 
