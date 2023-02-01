@@ -2,9 +2,8 @@
 
 library(tompen)
 library(ggplot2)
-source("~/myPackages.R")
-setwd("/gpfs/commons/groups/lappalainen_lab/jeinson/projects/modified_penetrance")
-source("mp_manuscript/tompen_utility_functions_manuscript.R")
+
+source("tompen_utility_functions_manuscript.R")
 
 # parameter DF
 

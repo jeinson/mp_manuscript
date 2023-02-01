@@ -1,5 +1,4 @@
-# Slight restructuring of the SSC script, so it produces the figures I want to 
-# use in the main analysis. 
+# Produce figures related to SSC data used in the main analysis. 
 
 rm(list = ls())
 setwd("/gpfs/commons/groups/lappalainen_lab/jeinson/projects/modified_penetrance/ssc")

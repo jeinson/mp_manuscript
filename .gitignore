@@ -4,3 +4,5 @@ figures_old.zip
 data/fig[0-9]_data/
 .R*
 .Rproj.user
+data/.DS_Store
+.DS_Store
